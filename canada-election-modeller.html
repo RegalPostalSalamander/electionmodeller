@@ -621,6 +621,57 @@
     opacity: 0.4;
   }
 
+  /* FLIPPED RIDINGS */
+  .flipped-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 420px;
+    overflow-y: auto;
+    margin-top: 6px;
+  }
+  .flipped-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    background: var(--surface2);
+    font-size: 0.68rem;
+    font-family: 'DM Mono', monospace;
+    line-height: 1.3;
+  }
+  .flipped-name {
+    flex: 1;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .flipped-arrow {
+    color: var(--text2);
+    flex-shrink: 0;
+    font-size: 0.6rem;
+  }
+  .flipped-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .flipped-empty {
+    padding: 16px 8px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 0.72rem;
+    font-style: italic;
+  }
+  .flipped-count {
+    font-size: 0.68rem;
+    color: var(--text2);
+    margin-bottom: 4px;
+  }
+
   /* ADVANCED SETTINGS */
   .adv-toggle {
     display: flex;
@@ -847,7 +898,7 @@
 
 <header>
   <h1>🇨🇦 Canadian Election Swing Modeller</h1>
-  <span class="subtitle">Uniform Swing Model</span>
+  <span class="subtitle">Based on 2025 Federal Election Results · Uniform Swing Model</span>
 </header>
 
 <div class="main-layout">
@@ -1065,6 +1116,12 @@
         <div class="maj-dot" id="maj-dot"></div>
         <span id="maj-text"></span>
       </div>
+    </div>
+
+    <div class="panel-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+      <h2>Flipped Ridings</h2>
+      <div class="flipped-count" id="flipped-count"></div>
+      <div class="flipped-list" id="flipped-list"></div>
     </div>
 
   </div>
@@ -1938,10 +1995,58 @@ function updateProjections() {
   const seats = countSeats(projResults);
   updateSeatGrid(seats);
   updateMajorityIndicator(seats);
+  updateFlippedRidings();
   updateMap();
 }
 
+function updateFlippedRidings() {
+  const colors = { lpc: '#d71920', cpc: '#1a4782', ndp: '#f37021', bq: '#33b2cc', gpc: '#3d9970', oth: '#666' };
+  const labels = { lpc: 'LPC', cpc: 'CPC', ndp: 'NDP', bq: 'BQ', gpc: 'GPC', oth: 'OTH' };
+
+  const flipped = [];
+  Object.entries(projResults).forEach(([id, result]) => {
+    const was = WINNERS_2025[id];
+    const now = result.winner;
+    if (was && now && was !== now) {
+      flipped.push({
+        name: ELECTION_2025[id]?.name || id,
+        was, now,
+      });
+    }
+  });
+
+  // Sort alphabetically by riding name
+  flipped.sort((a, b) => a.name.localeCompare(b.name));
+
+  const countEl = document.getElementById('flipped-count');
+  const listEl  = document.getElementById('flipped-list');
+  if (!listEl) return;
+
+  if (flipped.length === 0) {
+    countEl.textContent = '';
+    listEl.innerHTML = '<div class="flipped-empty">No ridings have changed from 2025 results.</div>';
+    return;
+  }
+
+  countEl.textContent = `${flipped.length} riding${flipped.length !== 1 ? 's' : ''} changed`;
+  listEl.innerHTML = flipped.map(f => `
+    <div class="flipped-item">
+      <div class="flipped-dot" style="background:${colors[f.was]}"></div>
+      <div class="flipped-arrow">→</div>
+      <div class="flipped-dot" style="background:${colors[f.now]}"></div>
+      <div class="flipped-name" title="${f.name}">${f.name}</div>
+    </div>
+  `).join('');
+}
+
 const ACTUALS_SEATS = { lpc: 169, cpc: 144, ndp: 7, bq: 22, gpc: 1 };
+
+// Pre-compute 2025 winner for each riding from ELECTION_2025 data
+const WINNERS_2025 = {};
+Object.entries(ELECTION_2025).forEach(([id, r]) => {
+  const parties = { lpc: r.lpc, cpc: r.cpc, ndp: r.ndp, bq: r.bq, gpc: r.gpc, oth: r.oth };
+  WINNERS_2025[id] = Object.entries(parties).reduce((a, b) => b[1] > a[1] ? b : a)[0];
+});
 
 function updateSeatGrid(seats) {
   const grid = document.getElementById('seat-grid');
