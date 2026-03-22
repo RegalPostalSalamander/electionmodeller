@@ -2230,7 +2230,7 @@ function displayMap(geojson) {
   const cx = (x0 + x1) / 2;
   const cy = y1;
   d3.select(canvas).call(zoom.transform, d3.zoomIdentity
-    .translate(cssW / 2, cssH * -0.50)
+    .translate(cssW / 2, cssH * -1.00)
     .scale(initialScale)
     .translate(-cx, -cy));
 
