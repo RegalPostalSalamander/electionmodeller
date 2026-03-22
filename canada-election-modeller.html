@@ -2226,7 +2226,7 @@ function displayMap(geojson) {
   // Initial view — southern Canada
   const [[x0, y0], [x1, y1]] = d3.geoPath().projection(projection).bounds(geojson);
   const scaleFullFit = Math.min(8, 0.9 / Math.max((x1 - x0) / cssW, (y1 - y0) / cssH));
-  const initialScale = scaleFullFit * 1.4;
+  const initialScale = scaleFullFit * 1.0;
   const cx = (x0 + x1) / 2;
   const cy = y1;
   d3.select(canvas).call(zoom.transform, d3.zoomIdentity
