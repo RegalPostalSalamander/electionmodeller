@@ -2228,9 +2228,9 @@ function displayMap(geojson) {
   const scaleFullFit = Math.min(8, 0.9 / Math.max((x1 - x0) / cssW, (y1 - y0) / cssH));
   const initialScale = scaleFullFit * 1.0;
   const cx = (x0 + x1) / 2;
-  const cy = y1;
+  const cy = (y0 + y1) / 2;
   d3.select(canvas).call(zoom.transform, d3.zoomIdentity
-    .translate(cssW / 1, cssH * 0.65)
+    .translate(cssW / 2, cssH / 2)
     .scale(initialScale)
     .translate(-cx, -cy));
 
