@@ -1993,7 +1993,6 @@ let overlay, octx;        // hover highlight layer
 let hoveredPath = null;    // the Path2D currently under the cursor
 let cachedPaths = [];      // array of {id, path2D, props} — built once on load
 let transform = { x: 0, y: 0, k: 1 };   // current pan/zoom state
-let initialTransform = null;             // saved on first load for reset
 let rafPending = false;    // requestAnimationFrame guard
 const PARTY_COLORS = { lpc: '#d71920', cpc: '#1a4782', ndp: '#f37021', bq: '#33b2cc', gpc: '#3d9970', oth: '#666' };
 
@@ -2230,12 +2229,10 @@ function displayMap(geojson) {
   const initialScale = scaleFullFit * 1.4;
   const cx = (x0 + x1) / 2;
   const cy = y1;
-  initialTransform = d3.zoomIdentity
+  d3.select(canvas).call(zoom.transform, d3.zoomIdentity
     .translate(cssW / 2, cssH * 0.65)
     .scale(initialScale)
-    .translate(-cx, -cy);
-
-  d3.select(canvas).call(zoom.transform, initialTransform);
+    .translate(-cx, -cy));
 
   scheduleRedraw();
 }
@@ -2345,8 +2342,7 @@ function onCanvasMouseMove(event) {
 function zoomIn() { d3.select(canvas).transition().call(zoom.scaleBy, 1.5); }
 function zoomOut() { d3.select(canvas).transition().call(zoom.scaleBy, 0.67); }
 function resetZoom() {
-  const t = initialTransform || d3.zoomIdentity;
-  d3.select(canvas).transition().duration(600).call(zoom.transform, t);
+  d3.select(canvas).transition().duration(600).call(zoom.transform, d3.zoomIdentity);
 }
 
 function buildLegend() {
