@@ -2334,7 +2334,31 @@ function initMap() {
 
   d3.select(canvas).call(zoom);
 
-  // Tooltip on mousemove
+  // Detect taps on mobile via d3-zoom's touch events
+  // Track touch start position to distinguish taps from pans
+  let _touchStartX = null, _touchStartY = null, _touchStartTime = null;
+  canvas.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      _touchStartX = e.touches[0].clientX;
+      _touchStartY = e.touches[0].clientY;
+      _touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', e => {
+    if (_touchStartX === null) return;
+    const touch = e.changedTouches[0];
+    const dx = Math.abs(touch.clientX - _touchStartX);
+    const dy = Math.abs(touch.clientY - _touchStartY);
+    const dt = Date.now() - _touchStartTime;
+    _touchStartX = _touchStartY = _touchStartTime = null;
+    // Only treat as a tap if finger barely moved and touch was brief
+    if (dx < 8 && dy < 8 && dt < 300) {
+      onCanvasTouchEnd(e);
+    }
+  }, { passive: true });
+
+  // Tooltip on mousemove (desktop)
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseleave', () => {
     document.getElementById('tooltip').style.display = 'none';
@@ -2342,8 +2366,6 @@ function initMap() {
     drawHoverOverlay();
   });
 
-  // Tooltip on tap (mobile)
-  canvas.addEventListener('touchend', onCanvasTouchEnd, { passive: true });
   // Tapping outside map hides tooltip on mobile
   document.addEventListener('touchstart', e => {
     if (!e.target.closest('.map-area')) {
