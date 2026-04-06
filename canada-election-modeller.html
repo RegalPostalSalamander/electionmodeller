@@ -911,7 +911,6 @@
     <div class="left-tabs">
       <button class="left-tab active" id="tab-national"   onclick="switchTab('national')">National Swing</button>
       <button class="left-tab"        id="tab-regional"   onclick="switchTab('regional')">Regional Swings</button>
-      <button class="left-tab"        id="tab-polling"    onclick="switchTab('polling')">Polling Data</button>
     </div>
 
     <!-- VIEW: NATIONAL SWING -->
@@ -1075,13 +1074,6 @@
       </div>
     </div>
 
-    <!-- VIEW: POLLING DATA -->
-    <div class="left-view" id="view-polling">
-      <div class="polling-empty">
-        <div class="polling-empty-icon">📊</div>
-        <p>Polling Data input coming soon.</p>
-      </div>
-    </div>
 
   </div>
 
@@ -1645,7 +1637,7 @@ let activeTab = 'national';
 // ============================================================
 function switchTab(tab) {
   activeTab = tab;
-  ['national','regional','polling'].forEach(t => {
+  ['national','regional'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
     document.getElementById(`view-${t}`).classList.toggle('active', t === tab);
   });
