@@ -910,6 +910,105 @@
     border-radius: 1px;
     min-height: 2px;
   }
+
+  /* ============================================================
+     MOBILE LAYOUT (phones)
+     ============================================================ */
+  @media (max-width: 768px) {
+
+    header {
+      padding: 12px 16px;
+      gap: 8px;
+    }
+
+    header h1 { font-size: 1.1rem; }
+    header .subtitle { font-size: 0.72rem; }
+
+    .main-layout {
+      flex-direction: column;
+      height: auto;
+      overflow: visible;
+    }
+
+    /* Left panel: full width, collapsible */
+    .left-panel {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      overflow-y: visible;
+      flex-shrink: unset;
+    }
+
+    /* Hide left panel body by default on mobile, show when expanded */
+    .left-panel-body {
+      display: none;
+    }
+    .left-panel-body.open {
+      display: block;
+    }
+
+    /* Mobile toggle bar for left panel */
+    .mobile-panel-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      cursor: pointer;
+      background: var(--surface);
+      user-select: none;
+      font-size: 0.75rem;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text2);
+    }
+    .mobile-panel-toggle:hover { background: var(--surface2); }
+    .mobile-panel-chevron { transition: transform 0.2s; font-size: 0.6rem; }
+    .mobile-panel-chevron.open { transform: rotate(180deg); }
+
+    /* Map: full width, fixed height */
+    .map-area {
+      width: 100%;
+      height: 60vw;
+      min-height: 280px;
+      max-height: 420px;
+    }
+
+    /* Right panel: full width, collapsible */
+    .right-panel {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      border-left: none;
+      border-top: 1px solid var(--border);
+      overflow-y: visible;
+      flex-shrink: unset;
+    }
+
+    .right-panel-body {
+      display: none;
+    }
+    .right-panel-body.open {
+      display: block;
+    }
+
+    /* Left tabs full width */
+    .left-tab { font-size: 0.6rem; padding: 10px 2px; }
+
+    /* Flipped list shorter on mobile */
+    .flipped-list { max-height: 240px; }
+
+    /* Tooltip adjusted for mobile */
+    .tooltip { font-size: 0.72rem; max-width: 180px; }
+
+    /* Hide desktop-only left-tabs bar inside collapsed panel */
+    .left-tabs { display: flex; }
+  }
+
+  /* Hide mobile toggles on desktop */
+  .mobile-panel-toggle { display: none; }
 </style>
 </head>
 <body>
@@ -923,6 +1022,14 @@
 
   <!-- LEFT PANEL -->
   <div class="left-panel">
+
+    <!-- MOBILE TOGGLE -->
+    <div class="mobile-panel-toggle" onclick="toggleMobilePanel('left')">
+      <span>⚙ Model Inputs</span>
+      <span class="mobile-panel-chevron" id="mobile-chevron-left">▼</span>
+    </div>
+
+    <div class="left-panel-body" id="left-panel-body">
 
     <!-- TAB BAR -->
     <div class="left-tabs">
@@ -1094,6 +1201,7 @@
     </div>
 
 
+    </div><!-- /left-panel-body -->
   </div>
 
   <!-- MAP -->
@@ -1117,6 +1225,14 @@
   <!-- RIGHT PANEL -->
   <div class="right-panel">
 
+    <!-- MOBILE TOGGLE -->
+    <div class="mobile-panel-toggle" onclick="toggleMobilePanel('right')">
+      <span>📊 Results</span>
+      <span class="mobile-panel-chevron" id="mobile-chevron-right">▼</span>
+    </div>
+
+    <div class="right-panel-body" id="right-panel-body">
+
     <div class="panel-section">
       <h2>Projected Seats</h2>
       <div class="seat-grid" id="seat-grid"></div>
@@ -1136,6 +1252,7 @@
       <div class="flipped-list" id="flipped-list"></div>
     </div>
 
+    </div><!-- /right-panel-body -->
   </div>
 
 </div>
@@ -1651,6 +1768,17 @@ REGIONS.forEach(r => {
 
 let activeRegionTab = 'ATL';
 let activeTab = 'national';
+
+// ============================================================
+// MOBILE PANEL TOGGLES
+// ============================================================
+function toggleMobilePanel(which) {
+  const body    = document.getElementById(`${which}-panel-body`);
+  const chevron = document.getElementById(`mobile-chevron-${which}`);
+  if (!body) return;
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
 
 // ============================================================
 // TAB SWITCHING
