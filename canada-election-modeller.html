@@ -2342,6 +2342,17 @@ function initMap() {
     drawHoverOverlay();
   });
 
+  // Tooltip on tap (mobile)
+  canvas.addEventListener('touchend', onCanvasTouchEnd, { passive: true });
+  // Tapping outside map hides tooltip on mobile
+  document.addEventListener('touchstart', e => {
+    if (!e.target.closest('.map-area')) {
+      document.getElementById('tooltip').style.display = 'none';
+      hoveredPath = null;
+      drawHoverOverlay();
+    }
+  }, { passive: true });
+
   loadMapData();
 }
 
@@ -2582,6 +2593,83 @@ function onCanvasMouseMove(event) {
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   if (x + tw > mapRect.width - 10) x -= tw + 24;
   if (y + th > mapRect.height - 10) y -= th + 24;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+
+function onCanvasTouchEnd(event) {
+  if (!cachedPaths.length) return;
+  const touch = event.changedTouches[0];
+  if (!touch) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const touchX = touch.clientX - rect.left;
+  const touchY = touch.clientY - rect.top;
+
+  const px = (touchX - transform.x) / transform.k;
+  const py = (touchY - transform.y) / transform.k;
+
+  let hit = null;
+  for (const entry of cachedPaths) {
+    if (ctx.isPointInPath(entry.path2D, px * devicePixelRatio, py * devicePixelRatio)) {
+      hit = entry;
+      break;
+    }
+  }
+
+  const tip = document.getElementById('tooltip');
+
+  // Toggle: tapping the same riding hides the tooltip
+  if (hit && hit.path2D === hoveredPath) {
+    tip.style.display = 'none';
+    hoveredPath = null;
+    drawHoverOverlay();
+    return;
+  }
+
+  hoveredPath = hit ? hit.path2D : null;
+  drawHoverOverlay();
+
+  if (!hit) { tip.style.display = 'none'; return; }
+
+  const props = hit.props;
+  const id = hit.id;
+  const riding = ELECTION_2025[id];
+  const result = projResults[id];
+
+  const nameKey = ['ED_NAMEE', 'ENAME', 'NAME_E', 'FEDENAME', 'name', 'Name'].find(k => props[k]);
+  const rName = (nameKey && props[nameKey]) || (riding?.name) || `Riding ${id}`;
+
+  if (!result) {
+    tip.innerHTML = `<div class="tt-name">${rName}</div><div style="color:var(--text2);font-size:0.75rem;">No data</div>`;
+  } else {
+    const pv = result.votes;
+    const actual = riding || {};
+    tip.innerHTML = `
+      <div class="tt-name">${rName}</div>
+      ${['lpc','cpc','ndp','bq','gpc'].map(pid => {
+        const p = PARTIES.find(x => x.id === pid);
+        if (!p || (pid === 'bq' && actual.prov !== 'QC' && (pv[pid]||0) < 0.1)) return '';
+        return `<div class="tt-row"><span style="color:${p.color}">${p.label}</span>
+          <span class="tt-val">${(pv[pid]||0).toFixed(1)}%</span></div>`;
+      }).join('')}
+      <div class="tt-winner">
+        <div style="width:10px;height:10px;border-radius:50%;background:${PARTY_COLORS[result.winner]}"></div>
+        ${(PARTIES.find(x=>x.id===result.winner)||{label:'Other'}).label} wins
+      </div>
+      <div style="font-size:0.62rem;color:var(--text2);margin-top:6px;">Tap again to close</div>
+    `;
+  }
+
+  // Position tooltip — centre above the tap point on mobile
+  const mapRect = document.querySelector('.map-area').getBoundingClientRect();
+  tip.style.display = 'block';
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = touch.clientX - mapRect.left - tw / 2;
+  let y = touch.clientY - mapRect.top - th - 16;
+  // Keep within map bounds
+  x = Math.max(8, Math.min(x, mapRect.width - tw - 8));
+  y = Math.max(8, Math.min(y, mapRect.height - th - 8));
   tip.style.left = x + 'px';
   tip.style.top = y + 'px';
 }
