@@ -2363,13 +2363,15 @@ function initMap() {
   });
 
   // Tapping outside map hides tooltip on mobile
-  document.addEventListener('touchstart', e => {
+  // Guard against dismissing on the same tap that opened the tooltip
+  document.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
     if (!e.target.closest('.map-area')) {
       document.getElementById('tooltip').style.display = 'none';
       hoveredPath = null;
       drawHoverOverlay();
     }
-  }, { passive: true });
+  });
 
   loadMapData();
 }
@@ -2639,9 +2641,11 @@ function onCanvasTouchEnd(event) {
   }
 
   const tip = document.getElementById('tooltip');
+  const now = Date.now();
 
-  // Toggle: tapping the same riding hides the tooltip
-  if (hit && hit.path2D === hoveredPath) {
+  // Toggle: tapping the same riding closes the tooltip,
+  // but only if it's been open for at least 400ms
+  if (hit && hit.path2D === hoveredPath && (now - (tip._shownAt || 0)) > 400) {
     tip.style.display = 'none';
     hoveredPath = null;
     drawHoverOverlay();
@@ -2685,6 +2689,7 @@ function onCanvasTouchEnd(event) {
   // Position tooltip — centre above the tap point on mobile
   const mapRect = document.querySelector('.map-area').getBoundingClientRect();
   tip.style.display = 'block';
+  tip._shownAt = Date.now();
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   let x = clientX - mapRect.left - tw / 2;
   let y = clientY - mapRect.top - th - 16;
