@@ -450,6 +450,23 @@
   }
 
   /* RESET BTN */
+  .share-btn {
+    width: 100%;
+    padding: 7px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    margin-top: 6px;
+  }
+  .share-btn:hover { background: var(--surface); color: var(--text); border-color: #58a6ff; }
+  .share-btn.copied { color: #3fb950; border-color: #3fb950; }
+
   .reset-btn {
     display: block;
     width: 100%;
@@ -924,6 +941,7 @@
         <button class="run-btn dirty" id="run-btn" onclick="runModel()">▶ Run Model</button>
         <div class="stale-badge" id="stale-badge">⚠ inputs changed — re-run to update</div>
         <button class="reset-btn" onclick="resetToActuals()">↺ Reset to 2025 Actuals</button>
+        <button class="share-btn" id="share-btn-national" onclick="shareScenario()">⬡ Copy Share Link</button>
       </div>
 
       <!-- ADVANCED SETTINGS -->
@@ -1006,6 +1024,7 @@
         <button class="run-btn dirty" id="run-btn-regional" onclick="runModel()" style="margin-top:6px;">▶ Run Model</button>
         <div class="stale-badge" id="stale-badge-regional">⚠ inputs changed — re-run to update</div>
         <button class="reset-btn" onclick="resetRegionalToActuals()">↺ Reset to 2025 Actuals</button>
+        <button class="share-btn" id="share-btn-regional" onclick="shareScenario()">⬡ Copy Share Link</button>
       </div>
 
       <!-- ADVANCED SETTINGS -->
@@ -1123,6 +1142,7 @@
 
 <!-- SCRIPTS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
 
 <script>
 // ============================================================
@@ -2458,14 +2478,175 @@ function buildLegend() {
 }
 
 // ============================================================
+// SHARE / RESTORE SCENARIO
+// ============================================================
+
+function encodeScenario() {
+  const state = { tab: activeTab };
+
+  // National polling — only encode deltas from 2025 actuals
+  const nationalDeltas = {};
+  PARTIES.forEach(p => {
+    const delta = Math.round((polling[p.id] - ACTUALS_2025[p.id]) * 10) / 10;
+    if (Math.abs(delta) >= 0.1) nationalDeltas[p.id] = delta;
+  });
+  if (Object.keys(nationalDeltas).length) state.nd = nationalDeltas;
+
+  // Regional polling — only encode values that differ from regional actuals
+  const regionalDeltas = {};
+  REGIONS.forEach(reg => {
+    const regDeltas = {};
+    PARTIES.forEach(p => {
+      const stored = regionalPolling[reg.id][p.id];
+      if (stored === null) return;
+      const actual = ACTUALS_REGIONAL[reg.id]?.[p.id] ?? ACTUALS_2025[p.id];
+      const delta = Math.round((stored - actual) * 10) / 10;
+      if (Math.abs(delta) >= 0.1) regDeltas[p.id] = delta;
+    });
+    if (Object.keys(regDeltas).length) regionalDeltas[reg.id] = regDeltas;
+  });
+  if (Object.keys(regionalDeltas).length) state.rd = regionalDeltas;
+
+  // Advanced modules — only encode if enabled
+  const mods = {};
+  ['incumbency','lateswing','squeeze'].forEach(mod => {
+    const suffix = activeTab === 'regional' ? '-r' : '';
+    const cb = document.getElementById(`toggle-${mod}${suffix}`);
+    if (cb?.checked) {
+      mods[mod] = true;
+      // Encode non-default slider values
+      if (mod === 'incumbency') {
+        const v = parseFloat(document.getElementById(`incumbency-slider${suffix}`)?.value);
+        if (Math.abs(v - 2.5) >= 0.1) mods.incumbencyVal = v;
+      }
+      if (mod === 'lateswing') {
+        const v = parseFloat(document.getElementById(`lateswing-slider${suffix}`)?.value);
+        if (Math.abs(v - 0.8) >= 0.05) mods.lateswingVal = v;
+      }
+      if (mod === 'squeeze') {
+        const v = parseFloat(document.getElementById(`squeeze-slider${suffix}`)?.value);
+        if (Math.abs(v - 0.35) >= 0.01) mods.squeezeVal = v;
+      }
+    }
+  });
+  if (Object.keys(mods).length) state.mods = mods;
+
+  const json = JSON.stringify(state);
+  return LZString.compressToEncodedURIComponent(json);
+}
+
+function decodeScenario(encoded) {
+  try {
+    const json = LZString.decompressFromEncodedURIComponent(encoded);
+    if (!json) return;
+    const state = JSON.parse(json);
+
+    // Restore tab
+    if (state.tab) switchTab(state.tab);
+
+    // Restore national polling deltas
+    if (state.nd) {
+      Object.entries(state.nd).forEach(([pid, delta]) => {
+        const newVal = Math.round((ACTUALS_2025[pid] + delta) * 10) / 10;
+        polling[pid] = newVal;
+        const slider = document.getElementById(`slider-${pid}`);
+        const input  = document.getElementById(`input-${pid}`);
+        if (slider) slider.value = newVal;
+        if (input)  input.value  = newVal.toFixed(1);
+        updateSwingBadge(pid);
+      });
+      updateTotal();
+    }
+
+    // Restore regional polling deltas
+    if (state.rd) {
+      Object.entries(state.rd).forEach(([regId, regDeltas]) => {
+        Object.entries(regDeltas).forEach(([pid, delta]) => {
+          const actual = ACTUALS_REGIONAL[regId]?.[pid] ?? ACTUALS_2025[pid];
+          regionalPolling[regId][pid] = Math.round((actual + delta) * 10) / 10;
+        });
+      });
+      renderRegionalInputsMain();
+    }
+
+    // Restore advanced modules
+    if (state.mods) {
+      ['incumbency','lateswing','squeeze'].forEach(mod => {
+        ['', '-r'].forEach(suffix => {
+          const cb = document.getElementById(`toggle-${mod}${suffix}`);
+          if (cb && state.mods[mod]) {
+            cb.checked = true;
+            const content = document.getElementById(`content-${mod}${suffix}`);
+            if (content) content.classList.add('enabled');
+          }
+        });
+      });
+      if (state.mods.incumbencyVal !== undefined) {
+        ['','- r'].forEach(suffix => {
+          const sl = document.getElementById(`incumbency-slider${suffix}`);
+          const vl = document.getElementById(`incumbency-val${suffix}`);
+          if (sl) { sl.value = state.mods.incumbencyVal; if(vl) vl.textContent = state.mods.incumbencyVal.toFixed(1)+' pp'; }
+        });
+      }
+      if (state.mods.lateswingVal !== undefined) {
+        ['','- r'].forEach(suffix => {
+          const sl = document.getElementById(`lateswing-slider${suffix}`);
+          const vl = document.getElementById(`lateswing-val${suffix}`);
+          if (sl) { sl.value = state.mods.lateswingVal; if(vl) vl.textContent = state.mods.lateswingVal.toFixed(1)+'×'; }
+        });
+      }
+      if (state.mods.squeezeVal !== undefined) {
+        ['','- r'].forEach(suffix => {
+          const sl = document.getElementById(`squeeze-slider${suffix}`);
+          const vl = document.getElementById(`squeeze-val${suffix}`);
+          if (sl) { sl.value = state.mods.squeezeVal; if(vl) vl.textContent = Math.round(state.mods.squeezeVal*100)+'%'; }
+        });
+      }
+      onModuleToggle();
+    }
+
+    // Run model with restored state
+    runModel();
+  } catch(e) {
+    console.warn('Could not restore scenario from URL:', e);
+  }
+}
+
+function shareScenario() {
+  const encoded = encodeScenario();
+  const url = `${location.origin}${location.pathname}?s=${encoded}`;
+  navigator.clipboard.writeText(url).then(() => {
+    ['share-btn-national','share-btn-regional'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const prev = btn.textContent;
+      btn.textContent = '✓ Link copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = prev; btn.classList.remove('copied'); }, 2000);
+    });
+  }).catch(() => {
+    prompt('Copy this link:', url);
+  });
+}
+
+// ============================================================
 // INIT
 // ============================================================
 buildPartyInputs();
 buildRegionalInputsMain();
 updateLateSwingViz();
 updateTotal();
-updateProjections();
-markClean();
+
+// Restore scenario from URL if present, otherwise run normally
+const _urlParams = new URLSearchParams(location.search);
+const _encoded = _urlParams.get('s');
+if (_encoded) {
+  decodeScenario(_encoded);
+} else {
+  updateProjections();
+  markClean();
+}
+
 window.addEventListener('DOMContentLoaded', () => {});
 // Use a small timeout to ensure DOM is ready
 setTimeout(() => {
