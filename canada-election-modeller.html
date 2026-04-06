@@ -2334,29 +2334,25 @@ function initMap() {
 
   d3.select(canvas).call(zoom);
 
-  // Detect taps on mobile via d3-zoom's touch events
-  // Track touch start position to distinguish taps from pans
-  let _touchStartX = null, _touchStartY = null, _touchStartTime = null;
-  canvas.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) {
-      _touchStartX = e.touches[0].clientX;
-      _touchStartY = e.touches[0].clientY;
-      _touchStartTime = Date.now();
+  // Detect taps on mobile via pointer events (not intercepted by d3-zoom)
+  let _pointerStartX = null, _pointerStartY = null, _pointerStartTime = null;
+  canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') {
+      _pointerStartX = e.clientX;
+      _pointerStartY = e.clientY;
+      _pointerStartTime = Date.now();
     }
-  }, { passive: true });
-
-  canvas.addEventListener('touchend', e => {
-    if (_touchStartX === null) return;
-    const touch = e.changedTouches[0];
-    const dx = Math.abs(touch.clientX - _touchStartX);
-    const dy = Math.abs(touch.clientY - _touchStartY);
-    const dt = Date.now() - _touchStartTime;
-    _touchStartX = _touchStartY = _touchStartTime = null;
-    // Only treat as a tap if finger barely moved and touch was brief
+  });
+  canvas.addEventListener('pointerup', e => {
+    if (e.pointerType !== 'touch' || _pointerStartX === null) return;
+    const dx = Math.abs(e.clientX - _pointerStartX);
+    const dy = Math.abs(e.clientY - _pointerStartY);
+    const dt = Date.now() - _pointerStartTime;
+    _pointerStartX = _pointerStartY = _pointerStartTime = null;
     if (dx < 8 && dy < 8 && dt < 300) {
       onCanvasTouchEnd(e);
     }
-  }, { passive: true });
+  });
 
   // Tooltip on mousemove (desktop)
   canvas.addEventListener('mousemove', onCanvasMouseMove);
@@ -2621,12 +2617,15 @@ function onCanvasMouseMove(event) {
 
 function onCanvasTouchEnd(event) {
   if (!cachedPaths.length) return;
-  const touch = event.changedTouches[0];
-  if (!touch) return;
+
+  // Support both TouchEvent and PointerEvent
+  const clientX = event.clientX ?? event.changedTouches?.[0]?.clientX;
+  const clientY = event.clientY ?? event.changedTouches?.[0]?.clientY;
+  if (clientX == null) return;
 
   const rect = canvas.getBoundingClientRect();
-  const touchX = touch.clientX - rect.left;
-  const touchY = touch.clientY - rect.top;
+  const touchX = clientX - rect.left;
+  const touchY = clientY - rect.top;
 
   const px = (touchX - transform.x) / transform.k;
   const py = (touchY - transform.y) / transform.k;
@@ -2687,8 +2686,8 @@ function onCanvasTouchEnd(event) {
   const mapRect = document.querySelector('.map-area').getBoundingClientRect();
   tip.style.display = 'block';
   const tw = tip.offsetWidth, th = tip.offsetHeight;
-  let x = touch.clientX - mapRect.left - tw / 2;
-  let y = touch.clientY - mapRect.top - th - 16;
+  let x = clientX - mapRect.left - tw / 2;
+  let y = clientY - mapRect.top - th - 16;
   // Keep within map bounds
   x = Math.max(8, Math.min(x, mapRect.width - tw - 8));
   y = Math.max(8, Math.min(y, mapRect.height - th - 8));
