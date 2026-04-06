@@ -1008,7 +1008,9 @@
   }
 
   /* Hide mobile toggles on desktop */
-  .mobile-panel-toggle { display: none; }
+  @media (min-width: 769px) {
+    .mobile-panel-toggle { display: none; }
+  }
 </style>
 </head>
 <body>
