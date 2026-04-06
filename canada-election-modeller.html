@@ -2334,9 +2334,18 @@ function initMap() {
 
   d3.select(canvas).call(zoom);
 
+  // DEBUG: visible touch log on mobile
+  const _dbg = document.createElement('div');
+  _dbg.id = 'touch-debug';
+  _dbg.style.cssText = 'position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.8);color:#0f0;font-size:11px;font-family:monospace;padding:6px;border-radius:4px;z-index:999;pointer-events:none;max-width:200px;';
+  _dbg.textContent = 'waiting for tap...';
+  document.querySelector('.map-area').appendChild(_dbg);
+  function _dbgLog(msg) { _dbg.textContent = msg; console.log('[touch]', msg); }
+
   // Detect taps on mobile via pointer events (not intercepted by d3-zoom)
   let _pointerStartX = null, _pointerStartY = null, _pointerStartTime = null;
   canvas.addEventListener('pointerdown', e => {
+    _dbgLog(`pointerdown: type=${e.pointerType} x=${Math.round(e.clientX)} y=${Math.round(e.clientY)}`);
     if (e.pointerType === 'touch') {
       _pointerStartX = e.clientX;
       _pointerStartY = e.clientY;
@@ -2344,13 +2353,17 @@ function initMap() {
     }
   });
   canvas.addEventListener('pointerup', e => {
+    _dbgLog(`pointerup: type=${e.pointerType} dx=${Math.round(Math.abs(e.clientX-(_pointerStartX||0)))} dt=${Date.now()-(_pointerStartTime||0)}ms`);
     if (e.pointerType !== 'touch' || _pointerStartX === null) return;
     const dx = Math.abs(e.clientX - _pointerStartX);
     const dy = Math.abs(e.clientY - _pointerStartY);
     const dt = Date.now() - _pointerStartTime;
     _pointerStartX = _pointerStartY = _pointerStartTime = null;
     if (dx < 8 && dy < 8 && dt < 300) {
+      _dbgLog('tap detected! calling handler...');
       onCanvasTouchEnd(e);
+    } else {
+      _dbgLog(`not a tap: dx=${Math.round(dx)} dy=${Math.round(dy)} dt=${dt}ms`);
     }
   });
 
