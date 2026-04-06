@@ -2647,7 +2647,7 @@ function onCanvasTouchEnd(event) {
 
   let hit = null;
   for (const entry of cachedPaths) {
-    if (ctx.isPointInPath(entry.path2D, px * devicePixelRatio, py * devicePixelRatio)) {
+    if (ctx.isPointInPath(entry.path2D, px, py)) {
       hit = entry;
       break;
     }
