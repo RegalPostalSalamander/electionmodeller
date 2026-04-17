@@ -796,17 +796,21 @@ function updateUI() {
 // ============================================================
 function getCanvasPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = W / rect.width;
-  const scaleY = H / rect.height;
-  let cx, cy;
+  // Scale from CSS display size → internal canvas pixel size
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  let clientX, clientY;
   if (e.touches) {
-    cx = (e.touches[0].clientX - rect.left) * scaleX;
-    cy = (e.touches[0].clientY - rect.top) * scaleY;
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
   } else {
-    cx = (e.clientX - rect.left) * scaleX;
-    cy = (e.clientY - rect.top) * scaleY;
+    clientX = e.clientX;
+    clientY = e.clientY;
   }
-  return { x: cx, y: cy };
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top)  * scaleY,
+  };
 }
 
 let dragging = false;
