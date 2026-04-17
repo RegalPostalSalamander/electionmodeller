@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BC Seat Modeller</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap');
+
+  :root {
+    --ndp: #F2A900;
+    --con: #1A5276;
+    --grn: #27AE60;
+    --ndp-light: rgba(242,169,0,0.15);
+    --con-light: rgba(26,82,118,0.15);
+    --grn-light: rgba(39,174,96,0.15);
+    --bg: #0D0F14;
+    --surface: #161A23;
+    --surface2: #1E2330;
+    --border: rgba(255,255,255,0.08);
+    --text: #E8ECF0;
+    --muted: #6B7280;
+    --accent: #F2A900;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* === HEADER === */
+  header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  header span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* === SEAT BAR === */
+  .seat-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .seat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .seat-counts {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .seat-party {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .seat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    transition: all 0.3s ease;
+  }
+  .seat-name {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .seat-bar {
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--surface2);
+    display: flex;
+  }
+  .seat-bar-seg {
+    height: 100%;
+    transition: width 0.35s ease;
+  }
+  .majority-line {
+    position: relative;
+    margin-top: 4px;
+  }
+  .majority-tick {
+    position: absolute;
+    top: -14px;
+    width: 1px;
+    height: 6px;
+    background: var(--muted);
+    left: 50%;
+  }
+  .majority-label {
+    position: absolute;
+    top: -26px;
+    font-size: 9px;
+    color: var(--muted);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+  }
+
+  /* === TERNARY PLOT === */
+  .ternary-section {
+    padding: 12px 20px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .ternary-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    touch-action: none;
+    user-select: none;
+  }
+  #ternaryCanvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: crosshair;
+  }
+  .vote-shares {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 360px;
+    margin-top: 8px;
+  }
+  .vote-share-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .vote-share-pct {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 300;
+    line-height: 1;
+    transition: all 0.2s;
+  }
+  .vote-share-lbl {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* === ADVANCED OPTIONS === */
+  .adv-section {
+    padding: 14px 20px;
+  }
+  .adv-header {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .adv-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .adv-btn {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .adv-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(242,169,0,0.08);
+  }
+  .adv-btn .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* === PANELS === */
+  .adv-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: none;
+    animation: panelIn 0.2s ease;
+  }
+  .adv-panel.open { display: block; }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .panel-title {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .panel-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  /* slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .slider-label {
+    font-size: 11px;
+    color: var(--text);
+    min-width: 80px;
+  }
+  .slider-val {
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 36px;
+    text-align: right;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface2);
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  /* regional surge */
+  .region-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .region-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .region-card.selected-ndp { border-color: var(--ndp); background: var(--ndp-light); }
+  .region-card.selected-con { border-color: var(--con); background: var(--con-light); }
+  .region-card.selected-grn { border-color: var(--grn); background: var(--grn-light); }
+  .region-name {
+    font-size: 11px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .region-party-btns {
+    display: flex;
+    gap: 4px;
+  }
+  .rpb {
+    flex: 1;
+    padding: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .rpb.active-ndp { background: var(--ndp); color: #000; border-color: var(--ndp); }
+  .rpb.active-con { background: var(--con); color: #fff; border-color: var(--con); }
+  .rpb.active-grn { background: var(--grn); color: #fff; border-color: var(--grn); }
+
+  .surge-size-row {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .surge-size-lbl { font-size: 10px; color: var(--muted); flex: 0 0 auto; }
+
+  /* incumbency info */
+  .incumb-info {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .incumb-item {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .incumb-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* footer */
+  footer {
+    padding: 16px 20px;
+    font-size: 10px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  /* reset button */
+  .reset-btn {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .reset-btn:hover { border-color: var(--muted); color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BC Seat Modeller</h1>
+  <span>2024 baseline</span>
+</header>
+
+<div class="seat-section">
+  <div class="seat-label">Projected seats — 93 total</div>
+  <div class="seat-counts">
+    <div class="seat-party">
+      <div class="seat-num" id="ndpSeats" style="color:var(--ndp)">47</div>
+      <div class="seat-name">NDP</div>
+    </div>
+    <div class="seat-party">
+      <div class="seat-num" id="conSeats" style="color:var(--con)">44</div>
+      <div class="seat-name">Conservative</div>
+    </div>
+    <div class="seat-party">
+      <div class="seat-num" id="grnSeats" style="color:var(--grn)">2</div>
+      <div class="seat-name">Green</div>
+    </div>
+    <div class="seat-party">
+      <div class="seat-num" id="othSeats" style="color:var(--muted)">0</div>
+      <div class="seat-name">Other</div>
+    </div>
+  </div>
+  <div style="position:relative; margin-bottom:18px;">
+    <div class="majority-label">Majority (47)</div>
+    <div class="majority-tick"></div>
+    <div class="seat-bar" id="seatBar">
+      <div class="seat-bar-seg" id="barNdp" style="background:var(--ndp); width:50.5%"></div>
+      <div class="seat-bar-seg" id="barCon" style="background:var(--con); width:47.3%"></div>
+      <div class="seat-bar-seg" id="barGrn" style="background:var(--grn); width:2.2%"></div>
+      <div class="seat-bar-seg" id="barOth" style="background:var(--muted); width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ternary-section">
+  <div class="ternary-wrap" id="ternaryWrap">
+    <canvas id="ternaryCanvas" width="400" height="380"></canvas>
+  </div>
+  <div class="vote-shares">
+    <div class="vote-share-item">
+      <div class="vote-share-pct" id="ndpPct" style="color:var(--ndp)">44.9%</div>
+      <div class="vote-share-lbl">NDP</div>
+    </div>
+    <div class="vote-share-item">
+      <div class="vote-share-pct" id="othPct" style="color:var(--muted)">3.6%</div>
+      <div class="vote-share-lbl">Other</div>
+    </div>
+    <div class="vote-share-item">
+      <div class="vote-share-pct" id="conPct" style="color:var(--con)">43.3%</div>
+      <div class="vote-share-lbl">Conservative</div>
+    </div>
+    <div class="vote-share-item">
+      <div class="vote-share-pct" id="grnPct" style="color:var(--grn)">8.2%</div>
+      <div class="vote-share-lbl">Green</div>
+    </div>
+  </div>
+  <button class="reset-btn" onclick="resetToBaseline()">↺ Reset to 2024 result</button>
+</div>
+
+<div class="adv-section">
+  <div class="adv-header">Advanced options</div>
+  <div class="adv-buttons">
+    <button class="adv-btn" id="btnIncumb" onclick="togglePanel('incumbency')">
+      <span class="dot"></span> Incumbency
+    </button>
+    <button class="adv-btn" id="btnOnebc" onclick="togglePanel('onebc')">
+      <span class="dot"></span> OneBC
+    </button>
+    <button class="adv-btn" id="btnRegional" onclick="togglePanel('regional')">
+      <span class="dot"></span> Regional Surges
+    </button>
+  </div>
+
+  <!-- Incumbency Panel -->
+  <div class="adv-panel" id="panel-incumbency">
+    <div class="panel-title">Incumbency Advantage</div>
+    <div class="panel-desc">Applies a +3 pp bonus to incumbent party vote share in each riding, drawn equally from both opponents. Research suggests incumbents gain 2–4 pp on average in BC provincial contests.</div>
+    <div class="incumb-info">
+      <div class="incumb-item"><div class="incumb-dot" style="background:var(--ndp)"></div>NDP holds 47 seats</div>
+      <div class="incumb-item"><div class="incumb-dot" style="background:var(--con)"></div>Con holds 44 seats</div>
+      <div class="incumb-item"><div class="incumb-dot" style="background:var(--grn)"></div>Green holds 2 seats</div>
+    </div>
+  </div>
+
+  <!-- OneBC Panel -->
+  <div class="adv-panel" id="panel-onebc">
+    <div class="panel-title">OneBC Party</div>
+    <div class="panel-desc">Models a OneBC candidacy drawing votes primarily from the Conservative base. 80% of OneBC support comes from Conservatives, 15% from NDP, 5% from Greens.</div>
+    <div class="slider-row">
+      <div class="slider-label">OneBC share</div>
+      <input type="range" id="onebcSlider" min="5" max="15" value="10" step="0.5" oninput="onOnebcChange()">
+      <div class="slider-val" id="onebcVal">10.0%</div>
+    </div>
+  </div>
+
+  <!-- Regional Surges Panel -->
+  <div class="adv-panel" id="panel-regional">
+    <div class="panel-title">Regional Surges</div>
+    <div class="panel-desc">Select a party surge in specific regions. Surge is applied on top of the province-wide swing. Tap a region, then pick the surging party.</div>
+    <div class="region-grid" id="regionGrid"></div>
+    <div class="surge-size-row">
+      <span class="surge-size-lbl">Surge size</span>
+      <input type="range" id="surgeSlider" min="2" max="10" value="5" step="1" oninput="onSurgeChange()">
+      <div class="slider-val" id="surgeVal">+5 pp</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Uniform swing model from 2024 BC provincial results.<br>
+  Independents &amp; minor parties held constant. 93 ridings total.
+</footer>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const RIDINGS = [{"name":"Abbotsford South","ndp":7454,"con":13053,"grn":0,"ind":681,"oth":0,"total":21188,"region":"Fraser Valley","incumbent":"con"},{"name":"Abbotsford West","ndp":7255,"con":11483,"grn":0,"ind":940,"oth":0,"total":19678,"region":"Fraser Valley","incumbent":"con"},{"name":"Abbotsford-Mission","ndp":10894,"con":13523,"grn":0,"ind":0,"oth":0,"total":24417,"region":"Fraser Valley","incumbent":"con"},{"name":"Boundary-Similkameen","ndp":10497,"con":11935,"grn":1454,"ind":779,"oth":0,"total":24665,"region":"Fraser Valley","incumbent":"con"},{"name":"Bulkley Valley-Stikine","ndp":3709,"con":4992,"grn":604,"ind":0,"oth":239,"total":9544,"region":"North","incumbent":"con"},{"name":"Burnaby Centre","ndp":9780,"con":7294,"grn":0,"ind":0,"oth":0,"total":17074,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Burnaby East","ndp":10490,"con":8198,"grn":1544,"ind":0,"oth":0,"total":20232,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Burnaby North","ndp":10724,"con":8658,"grn":0,"ind":754,"oth":0,"total":20136,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Burnaby South-Metrotown","ndp":7560,"con":6373,"grn":960,"ind":432,"oth":0,"total":15325,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Burnaby-New Westminster","ndp":10647,"con":6161,"grn":0,"ind":940,"oth":0,"total":17748,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Cariboo-Chilcotin","ndp":5992,"con":13714,"grn":0,"ind":0,"oth":0,"total":19706,"region":"North","incumbent":"con"},{"name":"Chilliwack North","ndp":8125,"con":11776,"grn":1187,"ind":487,"oth":0,"total":21575,"region":"Fraser Valley","incumbent":"con"},{"name":"Chilliwack-Cultus Lake","ndp":11366,"con":13656,"grn":0,"ind":0,"oth":0,"total":25022,"region":"Fraser Valley","incumbent":"con"},{"name":"Columbia River-Revelstoke","ndp":8098,"con":8768,"grn":1430,"ind":0,"oth":0,"total":18295,"region":"Interior","incumbent":"con"},{"name":"Coquitlam-Burke Mountain","ndp":11020,"con":10652,"grn":0,"ind":0,"oth":0,"total":21672,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Coquitlam-Maillardville","ndp":11972,"con":9146,"grn":1461,"ind":535,"oth":0,"total":23114,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Courtenay-Comox","ndp":13388,"con":13481,"grn":7202,"ind":647,"oth":0,"total":34718,"region":"Vancouver Island","incumbent":"con"},{"name":"Cowichan Valley","ndp":11795,"con":10946,"grn":5773,"ind":604,"oth":0,"total":29118,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Delta North","ndp":10988,"con":8381,"grn":1292,"ind":0,"oth":177,"total":20838,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Delta South","ndp":11822,"con":14491,"grn":0,"ind":0,"oth":0,"total":26313,"region":"Metro Vancouver","incumbent":"con"},{"name":"Esquimalt-Colwood","ndp":15238,"con":8652,"grn":5716,"ind":0,"oth":0,"total":29606,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Fraser-Nicola","ndp":6917,"con":10326,"grn":1761,"ind":0,"oth":0,"total":19004,"region":"Fraser Valley","incumbent":"con"},{"name":"Juan de Fuca-Malahat","ndp":9308,"con":9167,"grn":5522,"ind":0,"oth":0,"total":23997,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Kamloops Centre","ndp":10369,"con":12372,"grn":2597,"ind":0,"oth":0,"total":25338,"region":"Interior","incumbent":"con"},{"name":"Kamloops-North Thompson","ndp":9874,"con":17930,"grn":2209,"ind":0,"oth":0,"total":30013,"region":"Interior","incumbent":"con"},{"name":"Kelowna Centre","ndp":10993,"con":11033,"grn":1111,"ind":2613,"oth":0,"total":25750,"region":"Interior","incumbent":"con"},{"name":"Kelowna-Lake Country-Coldstream","ndp":9350,"con":14303,"grn":1151,"ind":1724,"oth":0,"total":26528,"region":"Interior","incumbent":"con"},{"name":"Kelowna-Mission","ndp":8913,"con":14071,"grn":1349,"ind":2996,"oth":0,"total":27329,"region":"Interior","incumbent":"con"},{"name":"Kootenay Central","ndp":8716,"con":6967,"grn":4123,"ind":2190,"oth":0,"total":21996,"region":"Interior","incumbent":"ndp"},{"name":"Kootenay-Monashee","ndp":10202,"con":7616,"grn":1785,"ind":0,"oth":0,"total":19603,"region":"Interior","incumbent":"ndp"},{"name":"Kootenay-Rockies","ndp":4184,"con":8217,"grn":996,"ind":5844,"oth":0,"total":19241,"region":"Interior","incumbent":"con"},{"name":"Ladysmith-Oceanside","ndp":14144,"con":12097,"grn":2292,"ind":5559,"oth":0,"total":34092,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Langford-Highlands","ndp":11444,"con":8251,"grn":2368,"ind":0,"oth":0,"total":22063,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Langley-Abbotsford","ndp":8691,"con":14341,"grn":1434,"ind":1104,"oth":200,"total":25770,"region":"Metro Vancouver","incumbent":"con"},{"name":"Langley-Walnut Grove","ndp":10949,"con":12121,"grn":1254,"ind":134,"oth":0,"total":24458,"region":"Metro Vancouver","incumbent":"con"},{"name":"Langley-Willowbrook","ndp":10112,"con":10979,"grn":1670,"ind":0,"oth":0,"total":22761,"region":"Metro Vancouver","incumbent":"con"},{"name":"Maple Ridge East","ndp":11961,"con":12058,"grn":1626,"ind":0,"oth":0,"total":25645,"region":"Metro Vancouver","incumbent":"con"},{"name":"Maple Ridge-Pitt Meadows","ndp":14480,"con":11901,"grn":0,"ind":0,"oth":0,"total":26381,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Mid Island-Pacific Rim","ndp":14042,"con":11366,"grn":3402,"ind":0,"oth":0,"total":28810,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Nanaimo-Gabriola Island","ndp":14663,"con":9633,"grn":3502,"ind":0,"oth":0,"total":27798,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Nanaimo-Lantzville","ndp":15307,"con":11687,"grn":2586,"ind":0,"oth":0,"total":29580,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Nechako Lakes","ndp":3167,"con":7851,"grn":622,"ind":0,"oth":0,"total":11640,"region":"North","incumbent":"con"},{"name":"New Westminster-Coquitlam","ndp":12757,"con":6438,"grn":2380,"ind":0,"oth":0,"total":21575,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"North Coast-Haida Gwaii","ndp":4863,"con":2628,"grn":0,"ind":0,"oth":0,"total":7491,"region":"North","incumbent":"ndp"},{"name":"North Island","ndp":13461,"con":14100,"grn":2397,"ind":0,"oth":0,"total":29958,"region":"Vancouver Island","incumbent":"con"},{"name":"North Vancouver-Lonsdale","ndp":16759,"con":9073,"grn":0,"ind":0,"oth":0,"total":25832,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"North Vancouver-Seymour","ndp":16210,"con":10995,"grn":1722,"ind":1794,"oth":0,"total":30721,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Oak Bay-Gordon Head","ndp":14519,"con":8542,"grn":6509,"ind":0,"oth":0,"total":29570,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Peace River North","ndp":828,"con":11213,"grn":0,"ind":3038,"oth":0,"total":15079,"region":"North","incumbent":"con"},{"name":"Peace River South","ndp":576,"con":7182,"grn":0,"ind":2525,"oth":0,"total":10283,"region":"North","incumbent":"con"},{"name":"Penticton-Summerland","ndp":11298,"con":11615,"grn":1472,"ind":3691,"oth":0,"total":28076,"region":"Interior","incumbent":"con"},{"name":"Port Coquitlam","ndp":13843,"con":9967,"grn":1644,"ind":0,"oth":244,"total":25698,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Port Moody-Burquitlam","ndp":13488,"con":10493,"grn":1927,"ind":0,"oth":0,"total":25908,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Powell River-Sunshine Coast","ndp":14474,"con":10409,"grn":3932,"ind":356,"oth":0,"total":29171,"region":"North","incumbent":"ndp"},{"name":"Prince George-Mackenzie","ndp":5242,"con":11307,"grn":1576,"ind":435,"oth":0,"total":18560,"region":"North","incumbent":"con"},{"name":"Prince George-North Cariboo","ndp":3426,"con":11430,"grn":866,"ind":4394,"oth":0,"total":20116,"region":"North","incumbent":"con"},{"name":"Prince George-Valemount","ndp":5709,"con":9018,"grn":1612,"ind":0,"oth":0,"total":16339,"region":"North","incumbent":"con"},{"name":"Richmond Centre","ndp":5961,"con":8426,"grn":0,"ind":1821,"oth":0,"total":16208,"region":"Metro Vancouver","incumbent":"con"},{"name":"Richmond-Bridgeport","ndp":5921,"con":9908,"grn":547,"ind":651,"oth":0,"total":17027,"region":"Metro Vancouver","incumbent":"con"},{"name":"Richmond-Queensborough","ndp":8713,"con":10052,"grn":0,"ind":979,"oth":0,"total":19744,"region":"Metro Vancouver","incumbent":"con"},{"name":"Richmond-Steveston","ndp":10332,"con":9848,"grn":803,"ind":2354,"oth":0,"total":23337,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Saanich North and the Islands","ndp":10958,"con":10145,"grn":12308,"ind":635,"oth":0,"total":34046,"region":"Vancouver Island","incumbent":"grn"},{"name":"Saanich South","ndp":15338,"con":10003,"grn":5485,"ind":0,"oth":0,"total":30826,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Salmon Arm-Shuswap","ndp":9677,"con":16566,"grn":2250,"ind":3295,"oth":0,"total":31788,"region":"Interior","incumbent":"con"},{"name":"Skeena","ndp":5419,"con":6243,"grn":406,"ind":0,"oth":126,"total":12194,"region":"North","incumbent":"con"},{"name":"Surrey City Centre","ndp":6727,"con":6491,"grn":878,"ind":160,"oth":147,"total":14403,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Surrey North","ndp":6794,"con":7954,"grn":662,"ind":125,"oth":162,"total":15697,"region":"Metro Vancouver","incumbent":"con"},{"name":"Surrey South","ndp":9136,"con":13056,"grn":0,"ind":0,"oth":0,"total":22192,"region":"Metro Vancouver","incumbent":"con"},{"name":"Surrey-Cloverdale","ndp":9681,"con":10268,"grn":1150,"ind":0,"oth":153,"total":21252,"region":"Metro Vancouver","incumbent":"con"},{"name":"Surrey-Fleetwood","ndp":9923,"con":9172,"grn":1321,"ind":0,"oth":0,"total":20416,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Surrey-Guildford","ndp":8947,"con":8925,"grn":824,"ind":370,"oth":0,"total":19066,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Surrey-Newton","ndp":7924,"con":6658,"grn":0,"ind":533,"oth":371,"total":15486,"region":"Metro Vancouver","incumbent":"ndp"},{"name":"Surrey-Panorama","ndp":8472,"con":8735,"grn":0,"ind":0,"oth":404,"total":17611,"region":"Metro Vancouver","incumbent":"con"},{"name":"Surrey-Serpentine River","ndp":9347,"con":9782,"grn":0,"ind":554,"oth":0,"total":19683,"region":"Metro Vancouver","incumbent":"con"},{"name":"Surrey-White Rock","ndp":12699,"con":14667,"grn":0,"ind":0,"oth":671,"total":28037,"region":"Metro Vancouver","incumbent":"con"},{"name":"Vancouver-Fraserview","ndp":11896,"con":7618,"grn":1291,"ind":0,"oth":0,"total":20805,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Hastings","ndp":14237,"con":5391,"grn":2409,"ind":157,"oth":0,"total":22194,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Kensington","ndp":11713,"con":6061,"grn":1458,"ind":0,"oth":0,"total":19232,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Langara","ndp":8506,"con":8087,"grn":969,"ind":0,"oth":0,"total":17562,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Little Mountain","ndp":15636,"con":7705,"grn":1833,"ind":0,"oth":0,"total":25174,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Point Grey","ndp":12538,"con":7622,"grn":1925,"ind":0,"oth":0,"total":22085,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Quilchena","ndp":8649,"con":11464,"grn":1729,"ind":385,"oth":0,"total":22227,"region":"Vancouver","incumbent":"con"},{"name":"Vancouver-Renfrew","ndp":10983,"con":5327,"grn":1064,"ind":0,"oth":0,"total":17374,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-South Granville","ndp":17208,"con":6678,"grn":2872,"ind":0,"oth":0,"total":26758,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Strathcona","ndp":13563,"con":3427,"grn":2731,"ind":0,"oth":336,"total":20057,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-West End","ndp":13143,"con":5677,"grn":1893,"ind":144,"oth":0,"total":20857,"region":"Vancouver","incumbent":"ndp"},{"name":"Vancouver-Yaletown","ndp":9018,"con":7858,"grn":1248,"ind":0,"oth":0,"total":18124,"region":"Vancouver","incumbent":"ndp"},{"name":"Vernon-Lumby","ndp":11837,"con":11361,"grn":0,"ind":4266,"oth":265,"total":27729,"region":"Interior","incumbent":"ndp"},{"name":"Victoria-Beacon Hill","ndp":13634,"con":5514,"grn":9645,"ind":0,"oth":0,"total":28793,"region":"Vancouver Island","incumbent":"ndp"},{"name":"Victoria-Swan Lake","ndp":14273,"con":5146,"grn":5900,"ind":0,"oth":156,"total":25475,"region":"Vancouver Island","incumbent":"ndp"},{"name":"West Kelowna-Peachland","ndp":7394,"con":13475,"grn":0,"ind":5630,"oth":0,"total":26499,"region":"Interior","incumbent":"con"},{"name":"West Vancouver-Capilano","ndp":7005,"con":12050,"grn":1435,"ind":5326,"oth":0,"total":25816,"region":"Metro Vancouver","incumbent":"con"},{"name":"West Vancouver-Sea to Sky","ndp":7212,"con":9762,"grn":10438,"ind":0,"oth":0,"total":27412,"region":"Vancouver Island","incumbent":"grn"}];
+
+const REGIONS = ["Vancouver","Metro Vancouver","Vancouver Island","Fraser Valley","Interior","North"];
+
+// 2024 provincial vote shares
+const BASE = { ndp: 0.449, con: 0.433, grn: 0.082 };
+// Other = 0.036, held constant in swing model
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  ndp: BASE.ndp,
+  con: BASE.con,
+  grn: BASE.grn,
+  incumbency: false,
+  onebc: false,
+  onebcPct: 0.10,
+  regional: false,
+  regionSurges: {}, // region -> 'ndp'|'con'|'grn'|null
+  surgePp: 5,
+};
+
+// ============================================================
+// TERNARY PLOT
+// ============================================================
+const canvas = document.getElementById('ternaryCanvas');
+const ctx = canvas.getContext('2d');
+const W = 400, H = 380;
+const PAD = 42;
+
+// Triangle vertices in canvas coords
+// NDP = top, CON = bottom-right, GRN = bottom-left  (but we'll do NDP=bottom-left, CON=bottom-right, GRN=top)
+// Standard: top = GRN, bottom-left = NDP, bottom-right = CON
+const VA = { x: W/2,        y: PAD };       // top = GRN
+const VB = { x: PAD,        y: H - PAD };   // bottom-left = NDP
+const VC = { x: W - PAD,    y: H - PAD };   // bottom-right = CON
+
+function ternaryToXY(ndp, con, grn) {
+  // ndp -> bottom-left, con -> bottom-right, grn -> top
+  const x = ndp * VB.x + con * VC.x + grn * VA.x;
+  const y = ndp * VB.y + con * VC.y + grn * VA.y;
+  return { x, y };
+}
+
+function xyToTernary(x, y) {
+  // Solve for barycentric coords
+  const denom = (VB.y - VC.y) * (VA.x - VC.x) + (VC.x - VB.x) * (VA.y - VC.y);
+  const ndp = ((VB.y - VC.y) * (x - VC.x) + (VC.x - VB.x) * (y - VC.y)) / denom;
+  const grn = ((VC.y - VA.y) * (x - VC.x) + (VA.x - VC.x) * (y - VC.y)) / denom;
+  const con = 1 - ndp - grn;
+  return { ndp, con, grn };
+}
+
+function isInsideTriangle(ndp, con, grn) {
+  return ndp >= 0 && con >= 0 && grn >= 0 && ndp <= 1 && con <= 1 && grn <= 1;
+}
+
+function clampToTriangle(x, y) {
+  let { ndp, con, grn } = xyToTernary(x, y);
+  // Project to triangle if outside
+  if (ndp < 0) { const s = con + grn; con = s > 0 ? con/s : 0.5; grn = s > 0 ? grn/s : 0.5; ndp = 0; }
+  if (con < 0) { const s = ndp + grn; ndp = s > 0 ? ndp/s : 0.5; grn = s > 0 ? grn/s : 0.5; con = 0; }
+  if (grn < 0) { const s = ndp + con; ndp = s > 0 ? ndp/s : 0.5; con = s > 0 ? con/s : 0.5; grn = 0; }
+  return { ndp, con, grn };
+}
+
+function drawTernary() {
+  ctx.clearRect(0, 0, W, H);
+
+  const dpr = 1;
+
+  // Background
+  ctx.fillStyle = '#161A23';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw gridlines
+  const gridSteps = 5;
+  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  for (let i = 1; i < gridSteps; i++) {
+    const t = i / gridSteps;
+    // NDP isolines (parallel to GRN-CON edge)
+    const p1 = ternaryToXY(t, 0, 1-t);
+    const p2 = ternaryToXY(t, 1-t, 0);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    // CON isolines
+    const q1 = ternaryToXY(0, t, 1-t);
+    const q2 = ternaryToXY(1-t, t, 0);
+    ctx.beginPath(); ctx.moveTo(q1.x, q1.y); ctx.lineTo(q2.x, q2.y); ctx.stroke();
+    // GRN isolines
+    const r1 = ternaryToXY(0, 1-t, t);
+    const r2 = ternaryToXY(1-t, 0, t);
+    ctx.beginPath(); ctx.moveTo(r1.x, r1.y); ctx.lineTo(r2.x, r2.y); ctx.stroke();
+  }
+
+  // Triangle border
+  ctx.beginPath();
+  ctx.moveTo(VA.x, VA.y);
+  ctx.lineTo(VB.x, VB.y);
+  ctx.lineTo(VC.x, VC.y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Corner labels
+  ctx.font = "bold 13px 'DM Mono', monospace";
+  ctx.textAlign = 'center';
+
+  // GRN top
+  ctx.fillStyle = '#27AE60';
+  ctx.fillText('GRN', VA.x, VA.y - 14);
+
+  // NDP bottom-left
+  ctx.fillStyle = '#F2A900';
+  ctx.textAlign = 'right';
+  ctx.fillText('NDP', VB.x + 4, VB.y + 22);
+
+  // CON bottom-right
+  ctx.fillStyle = '#1A5276';
+  ctx.textAlign = 'left';
+  ctx.fillText('CON', VC.x - 4, VC.y + 22);
+
+  // Axis % labels
+  ctx.font = "10px 'DM Mono', monospace";
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  for (let i = 1; i < gridSteps; i++) {
+    const t = i / gridSteps;
+    const pct = Math.round(t * 100);
+
+    // NDP axis label (left side)
+    const p = ternaryToXY(t, 1-t, 0);
+    ctx.textAlign = 'right';
+    ctx.fillText(pct, VB.x - 4, VB.y - (VB.y - VA.y) * t + 4);
+
+    // GRN axis label (right side)
+    ctx.textAlign = 'left';
+    const r = ternaryToXY(0, 1-t, t);
+    ctx.fillText(pct, VC.x + 4, VC.y - (VC.y - VA.y) * t + 4);
+  }
+
+  // Draw drag point with glow
+  const pt = ternaryToXY(state.ndp, state.con, state.grn);
+
+  // Glow
+  const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, 22);
+  grad.addColorStop(0, 'rgba(255,255,255,0.18)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(pt.x, pt.y, 22, 0, Math.PI*2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Crosshair lines to edges
+  ctx.setLineDash([3, 4]);
+  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  // to NDP vertex
+  ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(VB.x, VB.y); ctx.stroke();
+  // to CON vertex
+  ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(VC.x, VC.y); ctx.stroke();
+  // to GRN vertex
+  ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(VA.x, VA.y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Dot
+  ctx.beginPath();
+  ctx.arc(pt.x, pt.y, 9, 0, Math.PI*2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.strokeStyle = '#0D0F14';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+}
+
+// ============================================================
+// PROJECTION ENGINE
+// ============================================================
+function projectSeats() {
+  const { ndp: newNdp, con: newCon, grn: newGrn } = state;
+  const swingNdp = newNdp - BASE.ndp;
+  const swingCon = newCon - BASE.con;
+  const swingGrn = newGrn - BASE.grn;
+
+  let counts = { ndp: 0, con: 0, grn: 0, oth: 0 };
+
+  for (const r of RIDINGS) {
+    const baseTotal = r.ndp + r.con + r.grn + r.ind + r.oth;
+    const baseNdpPct = r.ndp / baseTotal;
+    const baseConPct = r.con / baseTotal;
+    const baseGrnPct = r.grn / baseTotal;
+
+    let adjNdp = Math.max(0, baseNdpPct + swingNdp);
+    let adjCon = Math.max(0, baseConPct + swingCon);
+    let adjGrn = Math.max(0, baseGrnPct + swingGrn);
+
+    // OneBC: draws from parties
+    if (state.onebc) {
+      const obc = state.onebcPct;
+      adjCon = Math.max(0, adjCon - obc * 0.80);
+      adjNdp = Math.max(0, adjNdp - obc * 0.15);
+      adjGrn = Math.max(0, adjGrn - obc * 0.05);
+    }
+
+    // Regional surge: +pp to selected party in that region, drawn from the other two proportionally
+    if (state.regional && state.regionSurges[r.region]) {
+      const surgeParty = state.regionSurges[r.region];
+      const pp = state.surgePp / 100;
+      const others = ['ndp','con','grn'].filter(p => p !== surgeParty);
+      const otherTotal = (surgeParty === 'ndp' ? adjCon + adjGrn :
+                          surgeParty === 'con' ? adjNdp + adjGrn : adjNdp + adjCon);
+      if (otherTotal > pp) {
+        if (surgeParty === 'ndp') {
+          adjNdp += pp;
+          adjCon -= pp * adjCon / otherTotal;
+          adjGrn -= pp * adjGrn / otherTotal;
+        } else if (surgeParty === 'con') {
+          adjCon += pp;
+          adjNdp -= pp * adjNdp / otherTotal;
+          adjGrn -= pp * adjGrn / otherTotal;
+        } else {
+          adjGrn += pp;
+          adjNdp -= pp * adjNdp / otherTotal;
+          adjCon -= pp * adjCon / otherTotal;
+        }
+      }
+    }
+
+    // Incumbency: +3pp for incumbent, drawn equally from others
+    if (state.incumbency) {
+      const INCUMB_PP = 0.03;
+      const inc = r.incumbent;
+      if (inc === 'ndp') {
+        adjNdp += INCUMB_PP;
+        adjCon = Math.max(0, adjCon - INCUMB_PP/2);
+        adjGrn = Math.max(0, adjGrn - INCUMB_PP/2);
+      } else if (inc === 'con') {
+        adjCon += INCUMB_PP;
+        adjNdp = Math.max(0, adjNdp - INCUMB_PP/2);
+        adjGrn = Math.max(0, adjGrn - INCUMB_PP/2);
+      } else if (inc === 'grn') {
+        adjGrn += INCUMB_PP;
+        adjNdp = Math.max(0, adjNdp - INCUMB_PP/2);
+        adjCon = Math.max(0, adjCon - INCUMB_PP/2);
+      }
+    }
+
+    adjNdp = Math.max(0, adjNdp);
+    adjCon = Math.max(0, adjCon);
+    adjGrn = Math.max(0, adjGrn);
+
+    const indOthPct = (r.ind + r.oth) / baseTotal;
+
+    // Determine winner
+    const scores = { ndp: adjNdp, con: adjCon, grn: adjGrn, oth: indOthPct };
+    const winner = Object.keys(scores).reduce((a,b) => scores[a] > scores[b] ? a : b);
+    counts[winner]++;
+  }
+
+  return counts;
+}
+
+// ============================================================
+// UI UPDATE
+// ============================================================
+function updateUI() {
+  const seats = projectSeats();
+
+  // Seat numbers
+  document.getElementById('ndpSeats').textContent = seats.ndp;
+  document.getElementById('conSeats').textContent = seats.con;
+  document.getElementById('grnSeats').textContent = seats.grn;
+  document.getElementById('othSeats').textContent = seats.oth;
+
+  // Seat bar
+  const total = 93;
+  document.getElementById('barNdp').style.width = (seats.ndp/total*100).toFixed(1)+'%';
+  document.getElementById('barCon').style.width = (seats.con/total*100).toFixed(1)+'%';
+  document.getElementById('barGrn').style.width = (seats.grn/total*100).toFixed(1)+'%';
+  document.getElementById('barOth').style.width = (seats.oth/total*100).toFixed(1)+'%';
+
+  // Vote share display
+  // Other = 1 - ndp - con - grn (clamped)
+  const othPct = Math.max(0, 1 - state.ndp - state.con - state.grn);
+  document.getElementById('ndpPct').textContent = (state.ndp*100).toFixed(1)+'%';
+  document.getElementById('conPct').textContent = (state.con*100).toFixed(1)+'%';
+  document.getElementById('grnPct').textContent = (state.grn*100).toFixed(1)+'%';
+  document.getElementById('othPct').textContent = (othPct*100).toFixed(1)+'%';
+
+  drawTernary();
+}
+
+// ============================================================
+// TERNARY INTERACTION
+// ============================================================
+function getCanvasPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  let cx, cy;
+  if (e.touches) {
+    cx = (e.touches[0].clientX - rect.left) * scaleX;
+    cy = (e.touches[0].clientY - rect.top) * scaleY;
+  } else {
+    cx = (e.clientX - rect.left) * scaleX;
+    cy = (e.clientY - rect.top) * scaleY;
+  }
+  return { x: cx, y: cy };
+}
+
+let dragging = false;
+
+function handleDrag(e) {
+  e.preventDefault();
+  const { x, y } = getCanvasPos(e);
+  const coords = clampToTriangle(x, y);
+  // Rescale so they sum to exactly 1 within triangle
+  const sum = coords.ndp + coords.con + coords.grn;
+  if (sum > 0) {
+    state.ndp = coords.ndp / sum;
+    state.con = coords.con / sum;
+    state.grn = coords.grn / sum;
+  }
+  updateUI();
+}
+
+canvas.addEventListener('mousedown', e => { dragging = true; handleDrag(e); });
+canvas.addEventListener('mousemove', e => { if (dragging) handleDrag(e); });
+window.addEventListener('mouseup', () => { dragging = false; });
+
+canvas.addEventListener('touchstart', e => { dragging = true; handleDrag(e); }, { passive: false });
+canvas.addEventListener('touchmove', e => { if (dragging) handleDrag(e); }, { passive: false });
+window.addEventListener('touchend', () => { dragging = false; });
+
+// ============================================================
+// ADVANCED PANEL LOGIC
+// ============================================================
+function togglePanel(id) {
+  const panel = document.getElementById('panel-' + id);
+  const btn = document.getElementById('btn' + id.charAt(0).toUpperCase() + id.slice(1));
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  btn.classList.toggle('active', !isOpen);
+
+  if (id === 'incumbency') state.incumbency = !isOpen;
+  if (id === 'onebc') { state.onebc = !isOpen; }
+  if (id === 'regional') state.regional = !isOpen;
+
+  updateUI();
+}
+
+function onOnebcChange() {
+  const val = parseFloat(document.getElementById('onebcSlider').value);
+  state.onebcPct = val / 100;
+  document.getElementById('onebcVal').textContent = val.toFixed(1) + '%';
+  updateUI();
+}
+
+function onSurgeChange() {
+  state.surgePp = parseInt(document.getElementById('surgeSlider').value);
+  document.getElementById('surgeVal').textContent = '+' + state.surgePp + ' pp';
+  updateUI();
+}
+
+// ============================================================
+// REGION GRID
+// ============================================================
+function buildRegionGrid() {
+  const grid = document.getElementById('regionGrid');
+  grid.innerHTML = '';
+  for (const region of REGIONS) {
+    const card = document.createElement('div');
+    card.className = 'region-card';
+    card.id = 'region-' + region.replace(/\s/g,'_');
+
+    const name = document.createElement('div');
+    name.className = 'region-name';
+    name.textContent = region;
+
+    const btns = document.createElement('div');
+    btns.className = 'region-party-btns';
+
+    for (const party of ['ndp','con','grn']) {
+      const b = document.createElement('button');
+      b.className = 'rpb';
+      b.textContent = party.toUpperCase();
+      b.id = `rpb-${region.replace(/\s/g,'_')}-${party}`;
+      b.onclick = () => toggleRegionSurge(region, party);
+      btns.appendChild(b);
+    }
+
+    card.appendChild(name);
+    card.appendChild(btns);
+    grid.appendChild(card);
+  }
+}
+
+function toggleRegionSurge(region, party) {
+  const current = state.regionSurges[region];
+  if (current === party) {
+    delete state.regionSurges[region];
+  } else {
+    state.regionSurges[region] = party;
+  }
+  updateRegionUI();
+  updateUI();
+}
+
+function updateRegionUI() {
+  for (const region of REGIONS) {
+    const card = document.getElementById('region-' + region.replace(/\s/g,'_'));
+    if (!card) continue;
+    card.className = 'region-card';
+    const surge = state.regionSurges[region];
+    if (surge) card.classList.add('selected-' + surge);
+
+    for (const party of ['ndp','con','grn']) {
+      const b = document.getElementById(`rpb-${region.replace(/\s/g,'_')}-${party}`);
+      if (!b) continue;
+      b.className = 'rpb';
+      if (surge === party) b.classList.add('active-' + party);
+    }
+  }
+}
+
+// ============================================================
+// RESET
+// ============================================================
+function resetToBaseline() {
+  state.ndp = BASE.ndp;
+  state.con = BASE.con;
+  state.grn = BASE.grn;
+  updateUI();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildRegionGrid();
+updateUI();
+</script>
+</body>
+</html>
